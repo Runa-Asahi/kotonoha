@@ -46,11 +46,54 @@ describe("srs", () => {
 describe("words & spell", () => {
   it("parses compact word format", () => {
     const w = parseWords([["abc", "n. 字母"], ["go", "v. 去", [["go on", "继续"]]]]);
-    expect(w[1]).toEqual({ id: 1, word: "go", meaning: "v. 去", phrases: [["go on", "继续"]] });
+    expect(w[1]).toEqual({ id: 1, word: "go", meaning: "v. 去", phrases: [["go on", "继续"]], reading: "" });
     expect(w[0].phrases).toEqual([]);
   });
   it("hints", () => {
     expect(hint("apple", 0)).toBe("a _ _ _ _");
     expect(hint("apple", 1)).toBe("a _ p _ e");
+  });
+});
+
+import { migrateV1 } from "../store";
+import { forDeck, DECKS } from "./decks";
+import { makeQuiz, SEION } from "./kanaQuiz";
+import { answerOf } from "../pages/Spell";
+
+describe("decks & migration", () => {
+  it("migrates v2.0.0 TOEFL-only data to deck-scoped keys", () => {
+    const m = migrateV1({ cards: { 5: { due: 1 } }, known: { 7: true }, starred: {}, log: { "2026-11-01": { n: 3, r: 1, ok: 2, ms: 10 } }, settings: { dailyNew: 30 } });
+    expect(Object.keys(m.cards)).toEqual(["toefl:5"]);
+    expect(Object.keys(m.known)).toEqual(["toefl:7"]);
+    expect(m.log["2026-11-01"].toefl?.n).toBe(3);
+    expect(m.settings.deck).toBe("toefl");
+    expect(m.settings.dailyNew).toBe(30);
+  });
+  it("forDeck separates progress per word book", () => {
+    const r = forDeck({ "toefl:1": "a", "n3:1": "b", "n3:22": "c" }, "n3");
+    expect(r).toEqual({ 1: "b", 22: "c" });
+  });
+  it("has all word books with counts", () => {
+    expect(DECKS.map((d) => d.id)).toEqual(["toefl", "cet6", "n5", "n4", "n3", "n2", "n1"]);
+    for (const d of DECKS) expect(d.count).toBeGreaterThan(500);
+  });
+  it("parses curated extra fields and Japanese reading answers", () => {
+    const [w] = parseWords([["経験", "名词 经验", [], "けいけん · keiken", ["例", "例子", "钩子", "経=经过|験=检验"]]]);
+    expect(w.parts).toEqual([{ t: "経", g: "经过" }, { t: "験", g: "检验" }]);
+    expect(answerOf(w, "ja")).toBe("けいけん");
+    expect(answerOf({ ...w, reading: "" }, "ja")).toBe("経験");
+  });
+});
+
+describe("kana quiz", () => {
+  it("builds unique questions with the answer among 4 choices", () => {
+    const q = makeQuiz(SEION, 20, "kata", "read");
+    expect(q).toHaveLength(20);
+    expect(new Set(q.map((x) => x.item.hira)).size).toBe(20);
+    for (const x of q) {
+      expect(x.choices).toHaveLength(4);
+      expect(x.choices).toContain(x.answer);
+      expect(new Set(x.choices).size).toBe(4);
+    }
   });
 });

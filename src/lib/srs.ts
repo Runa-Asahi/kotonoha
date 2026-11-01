@@ -49,7 +49,7 @@ export function dayKey(t: number | Date = Date.now()) {
 }
 
 export type QueueInput = {
-  cards: Record<string, StoredCard>;
+  cards: Record<number, StoredCard>;
   wordIds: number[];
   now: number;
   newLeft: number;

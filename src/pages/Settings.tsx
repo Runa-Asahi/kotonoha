@@ -64,7 +64,7 @@ export default function SettingsPage() {
         {msg && <p role="status" className="text-sm">{msg}</p>}
       </section>
       <p className="px-2 text-center text-xs leading-relaxed text-slate-400">
-        言叶 v{__APP_VERSION__} · 复习算法 FSRS · 词库来自 <a className="underline" href="https://github.com/KyleBing/english-vocabulary" target="_blank" rel="noreferrer">KyleBing/english-vocabulary</a>（BSD-3-Clause）
+        言叶 v{__APP_VERSION__} · 复习算法 FSRS · 英语词库 <a className="underline" href="https://github.com/KyleBing/english-vocabulary" target="_blank" rel="noreferrer">KyleBing/english-vocabulary</a>（BSD-3-Clause）· 日语词库 <a className="underline" href="https://github.com/jamsinclair/open-anki-jlpt-decks" target="_blank" rel="noreferrer">open-anki-jlpt-decks</a>（MIT）
       </p>
     </div>
   );

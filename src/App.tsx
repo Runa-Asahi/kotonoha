@@ -7,6 +7,7 @@ const Study = lazy(() => import("./pages/Study"));
 const Spell = lazy(() => import("./pages/Spell"));
 const Words = lazy(() => import("./pages/Words"));
 const WordDetail = lazy(() => import("./pages/WordDetail"));
+const Kana = lazy(() => import("./pages/Kana"));
 const Stats = lazy(() => import("./pages/Stats"));
 const SettingsPage = lazy(() => import("./pages/Settings"));
 
@@ -74,6 +75,7 @@ export default function App() {
           <Route path="/words" component={Words} />
           <Route path="/words/:id" component={WordDetail} />
           <Route path="/stats" component={Stats} />
+          <Route path="/kana" component={Kana} />
           <Route path="/settings" component={SettingsPage} />
           <Route component={NotFound} />
         </Switch>

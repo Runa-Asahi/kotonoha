@@ -2,8 +2,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation } from "wouter";
 import type { Grade } from "ts-fsrs";
 import { useWords } from "../lib/useWords";
-import { useToday } from "../lib/today";
 import { interleave, previewIntervals, Rating } from "../lib/srs";
+import { useDeckState, useToday } from "../lib/today";
+import { kanaReading } from "../lib/words";
 import { speak } from "../lib/speech";
 import { useStore } from "../store";
 import { Loading } from "../components/Loading";
@@ -14,8 +15,10 @@ type Phase = "recall" | "answer";
 const REQUEUE_GAP = 4;
 
 export default function Study() {
-  const { words, error, retry } = useWords();
-  const t = useToday(words);
+  const { words, error, retry, deck } = useWords();
+  const t = useToday(deck.id, words);
+  const ds = useDeckState(deck.id);
+  const lang = deck.lang;
   const [queue, setQueue] = useState<number[] | null>(null);
   const [pos, setPos] = useState(0);
   const [phase, setPhase] = useState<Phase>("recall");
@@ -32,12 +35,13 @@ export default function Study() {
   const byId = useMemo(() => (words ? words : []), [words]);
   const id = queue?.[pos];
   const w = id != null ? byId[id] : undefined;
-  const card = id != null ? s.cards[id] : undefined;
+  const card = id != null ? ds.cards[id] : undefined;
+  const sayText = w ? (lang === "ja" ? kanaReading(w) || w.word : w.word) : "";
   const intervals = useMemo(() => (id != null && phase === "answer" ? previewIntervals(card, new Date(), s.settings.retention) : null), [id, card, s.settings.retention, phase]);
 
   useEffect(() => {
     started.current = Date.now();
-    if (w && s.settings.autoSpeak) speak(w.word);
+    if (w && s.settings.autoSpeak) speak(sayText, lang);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [w?.id, pos]);
 
@@ -50,7 +54,7 @@ export default function Study() {
   const commit = useCallback(
     (g: Grade) => {
       if (id == null) return;
-      s.grade(id, g, Date.now() - started.current);
+      s.grade(deck.id, id, g, Date.now() - started.current);
       if (g === Rating.Again) {
         // 墨墨-style: forgotten words come back later in the same session.
         setQueue((q) => {
@@ -61,7 +65,7 @@ export default function Study() {
         });
       }
     },
-    [id, pos, s],
+    [id, pos, s, deck.id],
   );
 
   const choose = useCallback(
@@ -82,7 +86,7 @@ export default function Study() {
 
   const tooEasy = () => {
     if (id == null) return;
-    s.markKnown(id);
+    s.markKnown(deck.id, id);
     next();
   };
 
@@ -113,16 +117,16 @@ export default function Study() {
         e.preventDefault();
         confirm(choice ?? Rating.Good);
       } else if (e.key === "x" && choice === Rating.Good) confirm(Rating.Again);
-      if (e.key === "r" && w) speak(w.word);
+      if (e.key === "r" && w) speak(sayText, lang);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [phase, choice, choose, confirm, w]);
+  }, [phase, choice, choose, confirm, w, sayText, lang]);
 
   if (!queue) return <Loading error={error} retry={retry} />;
 
   if (!w) {
-    const today = s.log[Object.keys(s.log).sort().pop() ?? ""];
+    const today = s.log[Object.keys(s.log).sort().pop() ?? ""]?.[deck.id];
     return (
       <div className="card mt-10 space-y-4 p-8 text-center">
         <p className="text-5xl">🎉</p>
@@ -154,15 +158,17 @@ export default function Study() {
       <section aria-live="polite" className="card mt-2 flex flex-1 flex-col p-6">
         <div className="flex items-start justify-between">
           <span className={`rounded-full px-2 py-0.5 text-xs ${isNew ? "bg-brand-100 text-brand-700" : "bg-amber-100 text-amber-800"}`}>{isNew ? "新词" : "复习"}</span>
-          <button onClick={() => s.toggleStar(w.id)} aria-pressed={!!s.starred[w.id]} aria-label="收藏" className="text-xl">{s.starred[w.id] ? "★" : "☆"}</button>
+          <span className="text-xs text-slate-400">{deck.level}</span>
+          <button onClick={() => s.toggleStar(deck.id, w.id)} aria-pressed={!!ds.starred[w.id]} aria-label="收藏" className="text-xl">{ds.starred[w.id] ? "★" : "☆"}</button>
         </div>
         <div className="mt-8 text-center">
-          <h1 className="break-words text-4xl font-bold tracking-tight">{w.word}</h1>
-          <SpeakButton text={w.word} className="mt-2" />
+          <h1 lang={lang} className="break-words text-4xl font-bold tracking-tight">{w.word}</h1>
+          {w.reading && (lang === "en" || phase === "answer") && <p lang={lang} className="mt-1 text-slate-500">{w.reading}</p>}
+          <SpeakButton text={sayText} lang={lang} className="mt-2" />
         </div>
         {phase === "answer" ? (
           <div className="mt-6 border-t border-slate-100 pt-5 dark:border-slate-800">
-            <Meaning w={w} />
+            <Meaning w={w} lang={lang} />
           </div>
         ) : (
           <p className="mt-auto pb-4 text-center text-sm text-slate-400">先在心里回忆它的意思</p>

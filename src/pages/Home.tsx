@@ -2,45 +2,52 @@ import { Link } from "wouter";
 import { useWords } from "../lib/useWords";
 import { useToday } from "../lib/today";
 import { Loading } from "../components/Loading";
-import { useStore } from "../store";
+import { useStore, dayTotal, type Log } from "../store";
 import { dayKey } from "../lib/srs";
+import { DeckSwitcher } from "../components/DeckSwitcher";
 
-function streak(log: Record<string, { n: number; r: number }>) {
+function streak(log: Log) {
   let s = 0;
   const d = new Date();
   d.setHours(d.getHours() - 4);
-  if (!log[dayKey(Date.now())]) d.setDate(d.getDate() - 1);
+  if (dayTotal(log[dayKey(Date.now())]).n + dayTotal(log[dayKey(Date.now())]).r === 0) d.setDate(d.getDate() - 1);
   for (;;) {
     const k = dayKey(d.getTime() + 4 * 3600e3);
-    const e = log[k];
-    if (!e || e.n + e.r === 0) return s;
+    const e = dayTotal(log[k]);
+    if (e.n + e.r === 0) return s;
     s++;
     d.setDate(d.getDate() - 1);
   }
 }
 
 export default function Home() {
-  const { words, error, retry } = useWords();
-  const t = useToday(words);
+  const { words, error, retry, deck } = useWords();
+  const t = useToday(deck.id, words);
   const log = useStore((s) => s.log);
   const dailyNew = useStore((s) => s.settings.dailyNew);
-  if (!t) return <Loading error={error} retry={retry} />;
-  const pending = t.review.length + t.fresh.length;
-  const done = t.today.n + t.today.r;
-  const pct = Math.round((t.learned / t.total) * 100);
   const st = streak(log);
-  return (
-    <div className="space-y-4">
+  const head = (
+    <>
       <header className="flex items-end justify-between pt-2">
         <div>
           <h1 className="text-2xl font-bold">言叶</h1>
-          <p className="text-sm text-slate-500">新托福核心词汇 · {t.total.toLocaleString()} 词</p>
+          <p className="text-sm text-slate-500">英语 · 日语 · FSRS 智能复习</p>
         </div>
         {st > 0 && <p className="rounded-full bg-amber-100 px-3 py-1 text-sm text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">🔥 连续 {st} 天</p>}
       </header>
+      <DeckSwitcher />
+    </>
+  );
+  if (!t) return <div className="space-y-4">{head}<Loading error={error} retry={retry} /></div>;
+  const pending = t.review.length + t.fresh.length;
+  const done = t.today.n + t.today.r;
+  const pct = Math.round((t.learned / t.total) * 100);
+  return (
+    <div className="space-y-4">
+      {head}
 
       <section className="card p-5" aria-labelledby="today-h">
-        <h2 id="today-h" className="text-sm font-medium text-slate-500">今日任务</h2>
+        <h2 id="today-h" className="text-sm font-medium text-slate-500">今日任务 · {deck.level}</h2>
         <div className="mt-3 grid grid-cols-3 text-center">
           <div><p className="text-3xl font-bold text-brand-600">{t.fresh.length}</p><p className="text-xs text-slate-500">待学新词</p></div>
           <div><p className="text-3xl font-bold text-amber-600">{t.review.length}</p><p className="text-xs text-slate-500">待复习</p></div>
@@ -66,6 +73,12 @@ export default function Home() {
         </div>
         <p className="mt-3 text-xs text-slate-500">已掌握（跳过）{t.known} 词 · 按 FSRS 记忆模型安排复习</p>
       </section>
+
+      <Link href="/kana" className="card flex items-center gap-4 p-5 hover:ring-brand-500">
+        <span className="text-4xl" aria-hidden>あ</span>
+        <span className="flex-1"><b className="block">五十音</b><span className="text-sm text-slate-500">平假名 · 片假名 · 浊音 · 拗音 · 发音与小测</span></span>
+        <span aria-hidden className="text-slate-400">›</span>
+      </Link>
 
       {t.learned === 0 && (
         <section className="card space-y-2 p-5 text-sm leading-relaxed text-slate-600 dark:text-slate-300">
