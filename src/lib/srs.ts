@@ -1,80 +1,83 @@
-export type Rating = "again" | "hard" | "good" | "easy";
+import { createEmptyCard, fsrs, generatorParameters, Rating, State, type Card, type Grade } from "ts-fsrs";
 
-/** Index is the memory stage. Stage 0 is a lapse; 1–10 follow Ebbinghaus checkpoints. */
-const MINUTES = [
-  1,
-  5,
-  30,
-  12 * 60,
-  24 * 60,
-  2 * 24 * 60,
-  4 * 24 * 60,
-  7 * 24 * 60,
-  15 * 24 * 60,
-  30 * 24 * 60,
-  60 * 24 * 60,
-];
+export { Rating, State };
+export type StoredCard = Omit<Card, "due" | "last_review"> & { due: number; last_review?: number };
 
-export const STAGE_LABEL = [
-  "待巩固",
-  "5 分钟",
-  "30 分钟",
-  "12 小时",
-  "1 天",
-  "2 天",
-  "4 天",
-  "7 天",
-  "15 天",
-  "30 天",
-  "60 天",
-] as const;
+export function toStored(c: Card): StoredCard {
+  return { ...c, due: c.due.getTime(), last_review: c.last_review ? c.last_review.getTime() : undefined };
+}
+export function fromStored(s: StoredCard): Card {
+  return { ...s, due: new Date(s.due), last_review: s.last_review ? new Date(s.last_review) : undefined };
+}
 
-export const RATING_LABEL: Record<Rating, string> = {
-  again: "忘记",
-  hard: "生疏",
-  good: "记住",
-  easy: "很容易",
+export function makeScheduler(retention: number) {
+  return fsrs(generatorParameters({ request_retention: retention, enable_fuzz: true, enable_short_term: true }));
+}
+
+export function review(stored: StoredCard | undefined, grade: Grade, now: Date, retention = 0.9): StoredCard {
+  const card = stored ? fromStored(stored) : createEmptyCard(now);
+  return toStored(makeScheduler(retention).next(card, now, grade).card);
+}
+
+/** Preview of next intervals for each button, e.g. {1:"1分钟",3:"10分钟"} */
+export function previewIntervals(stored: StoredCard | undefined, now: Date, retention = 0.9) {
+  const card = stored ? fromStored(stored) : createEmptyCard(now);
+  const r = makeScheduler(retention).repeat(card, now);
+  const out = {} as Record<Grade, string>;
+  for (const g of [Rating.Again, Rating.Hard, Rating.Good, Rating.Easy] as Grade[]) {
+    out[g] = formatInterval(r[g].card.due.getTime() - now.getTime());
+  }
+  return out;
+}
+
+export function formatInterval(ms: number) {
+  const m = Math.max(1, Math.round(ms / 60000));
+  if (m < 60) return `${m}分钟`;
+  const h = Math.round(m / 60);
+  if (h < 24) return `${h}小时`;
+  const d = Math.round(h / 24);
+  if (d < 30) return `${d}天`;
+  if (d < 365) return `${Math.round(d / 30)}个月`;
+  return `${(d / 365).toFixed(1)}年`;
+}
+
+export function dayKey(t: number | Date = Date.now()) {
+  const d = new Date(t);
+  // Learning day rolls over at 4am, like Anki/墨墨.
+  d.setHours(d.getHours() - 4);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+export type QueueInput = {
+  cards: Record<string, StoredCard>;
+  wordIds: number[];
+  now: number;
+  newLeft: number;
+  reviewLimit: number;
 };
 
-export const LADDER = STAGE_LABEL.slice(1);
-
-export function formatMinutes(mins: number): string {
-  if (mins < 60) return `${mins} 分钟`;
-  const days = mins / (60 * 24);
-  if (days >= 1) {
-    const rounded = Math.round(days * 10) / 10;
-    if (Math.abs(rounded - Math.round(rounded)) < 0.05) return `${Math.round(rounded)} 天`;
-    return `${rounded} 天`;
+/** Due reviews (most overdue first) followed by the remaining new words for today. */
+export function buildQueue({ cards, wordIds, now, newLeft, reviewLimit }: QueueInput) {
+  const due: { id: number; due: number }[] = [];
+  const fresh: number[] = [];
+  for (const id of wordIds) {
+    const c = cards[id];
+    if (!c) {
+      if (fresh.length < newLeft) fresh.push(id);
+    } else if (c.due <= now) due.push({ id, due: c.due });
   }
-  return `${Math.round(mins / 60)} 小时`;
+  due.sort((a, b) => a.due - b.due);
+  return { review: due.slice(0, reviewLimit).map((d) => d.id), fresh };
 }
 
-export function nextStep(stage: number, rating: Rating): { stage: number; minutes: number } {
-  if (rating === "again") return { stage: 0, minutes: MINUTES[0] };
-  if (rating === "hard") {
-    const stay = Math.max(1, stage);
-    return { stage: stay, minutes: Math.max(5, Math.round(MINUTES[stay] / 2)) };
+/** Interleave: a few reviews, then a new word, so sessions stay varied. */
+export function interleave(review: number[], fresh: number[], ratio = 3) {
+  const out: number[] = [];
+  let r = 0,
+    f = 0;
+  while (r < review.length || f < fresh.length) {
+    for (let i = 0; i < ratio && r < review.length; i++) out.push(review[r++]);
+    if (f < fresh.length) out.push(fresh[f++]);
   }
-  const jump = rating === "easy" ? 2 : 1;
-  const next = Math.min(MINUTES.length - 1, stage + jump);
-  return { stage: next, minutes: MINUTES[next] };
-}
-
-export function ratingsFor(stage: number): Rating[] {
-  if (stage <= 0) return ["again", "good", "easy"];
-  return ["again", "hard", "good", "easy"];
-}
-
-export function dayKey(ts = Date.now()): string {
-  const date = new Date(ts);
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${date.getFullYear()}-${month}-${day}`;
-}
-
-export function shiftDay(key: string, delta: number): string {
-  const [year, month, day] = key.split("-").map(Number);
-  const date = new Date(year, month - 1, day);
-  date.setDate(date.getDate() + delta);
-  return dayKey(date.getTime());
+  return out;
 }

@@ -1,20 +1,41 @@
-# 言叶
+# 言叶 Kotonoha · 新托福单词
 
-按艾宾浩斯遗忘曲线学习英语和日语单词。包含读音、词根词缀、日语五十音，以及六级、托福、N3、N2、N1。
+在线使用：**https://runa-asahi.github.io/kotonoha/** （手机浏览器打开后「添加到主屏幕」即可像 App 一样离线使用）
 
-## 安装 Android 版
+参考墨墨背单词的学习方式，用现代记忆算法背新托福词汇。
 
-1. 打开 [Releases](https://github.com/Runa-Asahi/kotonoha/releases) 下载 `kotonoha-1.0.0.apk`。
-2. 在手机上打开这个文件。如果系统拦截，到设置里允许安装未知应用。
-3. 安装后从桌面的「言叶」进入。学习进度只保存在这台手机上。
+## 功能
 
-需要 Android 8 及以上。
+- **新托福词库**：10,366 词，含词性释义与常用短语。
+- **FSRS 智能复习**：业界最新的间隔重复算法（Anki 同款），在你快要忘记时安排复习；可调目标记忆保持率。
+- **每日任务**：每日新词 + 到期复习，复习与新词交替出现；凌晨 4 点切换学习日。
+- **先回忆再看答案**：认识 / 模糊 / 忘记，看答案后可「记错了」纠正；「忘记」的词本轮稍后会再出现；「太简单」的词不再出现；支持撤销。
+- **拼写练习**：根据中文释义拼写，优先练最薄弱的词，带字母提示。
+- **发音**：浏览器内置语音朗读（可设置自动朗读）。
+- **统计**：连续打卡、学习热力图、记忆阶段、未来 7 天复习预测、正确率。
+- **词库浏览**：搜索英文/中文，按学习中/未学/收藏/已掌握筛选。
+- **离线 PWA**、深色模式、移动端优先、键盘快捷键（1/2/3 选择，空格下一个，R 朗读）。
+- 数据保存在本机浏览器，可导出 / 导入备份。
 
-## 怎么学
+## 技术栈
 
-- 今日：选择课程，开始今天的新词或复习。
-- 学习：先回忆，再看词根或汉字，然后选忘记、生疏、记住、很容易。
-- 五十音：点开每一格看《纸灯町》分镜，也可以做小测。
-- 曲线：看复习节点和自己的单词停在哪一格。
+Vite 8 · React 19 · TypeScript · Tailwind CSS 4 · ts-fsrs · zustand（localStorage 持久化）· wouter（hash 路由）· vite-plugin-pwa · Vitest · GitHub Actions → GitHub Pages。
 
-复习节点是 5 分钟、30 分钟、12 小时、1 天、2 天、4 天、7 天、15 天、30 天、60 天。
+纯静态站点，无需服务器、数据库或登录。
+
+## 开发
+
+```bash
+npm install
+npm run dev       # 本地开发
+npm test          # 单元测试
+npm run lint
+npm run build     # 产物在 dist/
+npm run words     # 重新生成 public/words/toefl.json
+```
+
+推送到 `main` 后 GitHub Actions 自动构建并部署到 Pages（仓库 Settings → Pages → Source 选 “GitHub Actions”）。
+
+## 词库来源
+
+[KyleBing/english-vocabulary](https://github.com/KyleBing/english-vocabulary) 的「托福」词表，BSD-3-Clause 许可。见 `public/words/LICENSE`。
