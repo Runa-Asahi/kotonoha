@@ -7,7 +7,7 @@ import { VitePWA } from "vite-plugin-pwa";
 // custom domains and file hosts, and deep links never hit the server's 404.
 export default defineConfig({
   base: "./",
-  define: { __APP_VERSION__: JSON.stringify(process.env.npm_package_version ?? "2.2.0") },
+  define: { __APP_VERSION__: JSON.stringify(process.env.npm_package_version ?? "2.3.0") },
   plugins: [
     react(),
     tailwindcss(),

@@ -77,7 +77,7 @@ describe("decks & migration", () => {
     expect(r).toEqual({ 1: "b", 22: "c" });
   });
   it("has all word books with counts", () => {
-    expect(DECKS.map((d) => d.id)).toEqual(["toefl", "cet6", "n5", "n4", "n3", "n2", "n1"]);
+    expect(DECKS.map((d) => d.id)).toEqual(["toefl", "ielts", "cet6", "cet4", "n5", "n4", "n3", "n2", "n1"]);
     for (const d of DECKS) expect(d.count).toBeGreaterThan(500);
   });
   it("parses curated extra fields and Japanese reading answers", () => {

@@ -26,7 +26,7 @@ export function DeckPicker({ open, onClose }: { open: boolean; onClose: () => vo
                   <button onClick={() => { haptic("medium"); setSettings({ deck: d.id }); onClose(); }} aria-pressed={on}
                     className={`press flex w-full items-center gap-4 rounded-2xl border p-3 text-left ${on ? "border-fg bg-elevated" : "border-border"}`}>
                     <span className={`grid size-12 shrink-0 place-items-center rounded-xl font-jp text-lg ${on ? "bg-ink text-ink-fg" : "bg-elevated"}`}>
-                      {lang === "ja" ? d.label : d.id === "toefl" ? "托" : "六"}
+                      {d.mark ?? d.label}
                     </span>
                     <span className="min-w-0 flex-1">
                       <span className="block font-medium">{d.label} <span className="font-word text-sm italic text-subtle">{d.level}</span></span>
