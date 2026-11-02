@@ -15,6 +15,7 @@ export function useToday(deck: DeckId, words: Word[] | null) {
   const { cards, known } = useDeckState(deck);
   const log = useStore((s) => s.log);
   const settings = useStore((s) => s.settings);
+  const extra = useStore((s) => s.extra);
   return useMemo(() => {
     if (!words) return null;
     const today = dayTotal(log[dayKey()], deck);
@@ -23,9 +24,9 @@ export function useToday(deck: DeckId, words: Word[] | null) {
       cards,
       wordIds: ids,
       now: Date.now(),
-      newLeft: Math.max(0, settings.dailyNew - today.n),
+      newLeft: Math.max(0, settings.dailyNew + (extra[`${dayKey()}:${deck}`] ?? 0) - today.n),
       reviewLimit: Math.max(0, settings.reviewLimit - today.r),
     });
-    return { ...q, today, learned: Object.keys(cards).length, known: Object.keys(known).length, total: words.length };
-  }, [words, cards, known, log, settings, deck]);
+    return { ...q, today, unlearned: ids.filter((id) => !cards[id]).length, learned: Object.keys(cards).length, known: Object.keys(known).length, total: words.length };
+  }, [words, cards, known, log, settings, deck, extra]);
 }

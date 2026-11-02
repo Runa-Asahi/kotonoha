@@ -81,3 +81,11 @@ export function interleave(review: number[], fresh: number[], ratio = 3) {
   }
   return out;
 }
+
+/** FSRS-6 forgetting curve: probability of recall now (0–1). */
+export function retrievability(c: StoredCard, now = Date.now(), decay = 0.1542) {
+  if (c.last_review == null || c.stability <= 0) return 0;
+  const t = Math.max(0, (now - c.last_review) / 864e5);
+  const factor = Math.pow(0.9, -1 / decay) - 1;
+  return Math.pow(1 + (factor * t) / c.stability, -decay);
+}

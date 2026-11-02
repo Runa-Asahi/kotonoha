@@ -8,6 +8,12 @@
 
 到 [Releases](https://github.com/Runa-Asahi/kotonoha/releases) 下载最新的 `kotonoha-x.y.z.apk`，在手机上打开安装（需允许安装未知应用，Android 7+）。
 
+## v2.2 设计
+
+- 沿用 1.0.0 的墨色菱形标志与「ことのは」字标；两套主题：**和紙**（米色纸纹）与 **墨**（1.0 深色），强调色随季节变化（春桜 / 夏青竹 / 秋紅葉 / 冬藍）。
+- 明朝体标题（内置 Noto Serif JP 子集）+ Newsreader 英文字体；卡片滑动、底部抽屉、印章动画与触感反馈（Android 震动）。
+- 英语词条显示美式 / 英式音标（CMUdict / ECDICT），日语显示假名与罗马音；单词发音优先使用有道词典真人发音，离线时退回系统语音；五十音全部内置录音，离线和 APK 中都能听。
+
 ## 功能
 
 - **7 本词书，进度和每日任务各自独立**：
@@ -56,6 +62,9 @@ npm run android:apk  # 构建 Android debug APK（需 JDK 21 + Android SDK）
 ## 词库来源
 
 - 英语：[KyleBing/english-vocabulary](https://github.com/KyleBing/english-vocabulary)（BSD-3-Clause）
+- 音标：[CMUdict](https://github.com/cmusphinx/cmudict)（BSD 风格许可，美式，ARPAbet→IPA 转换）、[ECDICT](https://github.com/skywind3000/ECDICT)（MIT，英式 + 词形变化）
+- 五十音录音：`scripts/make-kana-audio.mjs` 用 edge-tts（ja-JP-NanamiNeural）离线生成
+- 明朝字体：Noto Serif CJK JP 子集（SIL OFL 1.1），`scripts/make-font.sh`
 - 日语：[jamsinclair/open-anki-jlpt-decks](https://github.com/jamsinclair/open-anki-jlpt-decks)（MIT，源自 tanos.co.uk Jonathan Waller 的 JLPT 词表）
 
 详见 `public/words/LICENSE`。GitHub Actions 的 Android APK 工作流会构建可直接安装的 debug 签名 APK。

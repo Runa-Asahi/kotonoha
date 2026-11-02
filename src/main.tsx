@@ -1,6 +1,10 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { registerSW } from "virtual:pwa-register";
+import "@fontsource/newsreader/latin-500.css";
+import "@fontsource/newsreader/latin-500-italic.css";
+import "@fontsource/outfit/latin-400.css";
+import "@fontsource/outfit/latin-500.css";
 import App from "./App";
 import "./styles.css";
 

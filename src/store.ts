@@ -12,6 +12,8 @@ export type Settings = {
   retention: number;
   autoSpeak: boolean;
   dark: "auto" | "light" | "dark";
+  season: "auto" | "spring" | "summer" | "autumn" | "winter";
+  accent: "us" | "uk";
 };
 /** log[day][deck] */
 export type Log = Record<string, Partial<Record<DeckId, DayLog>>>;
@@ -26,6 +28,9 @@ type S = {
   log: Log;
   /** kana drill: per-kana correct/wrong counts */
   kana: Record<string, [number, number]>;
+  kanaBest: number;
+  /** extra new words unlocked today: key `${day}:${deck}` */
+  extra: Record<string, number>;
   settings: Settings;
   undo: Undo | null;
   grade: (deck: DeckId, id: number, g: Grade, ms: number) => void;
@@ -33,14 +38,16 @@ type S = {
   markKnown: (deck: DeckId, id: number) => void;
   toggleStar: (deck: DeckId, id: number) => void;
   kanaResult: (kana: string, ok: boolean) => void;
+  setKanaBest: (n: number) => void;
+  addExtra: (deck: DeckId, n: number) => void;
   setSettings: (p: Partial<Settings>) => void;
   importData: (json: string) => void;
   reset: () => void;
 };
 
 export const EMPTY_DAY: DayLog = { n: 0, r: 0, ok: 0, ms: 0 };
-const defaults: Settings = { deck: "toefl", dailyNew: 20, reviewLimit: 200, retention: 0.9, autoSpeak: true, dark: "auto" };
-const empty = { cards: {}, known: {}, starred: {}, log: {}, kana: {}, undo: null };
+const defaults: Settings = { deck: "toefl", dailyNew: 20, reviewLimit: 200, retention: 0.9, autoSpeak: true, dark: "auto", season: "auto", accent: "us" };
+const empty = { cards: {}, known: {}, starred: {}, log: {}, kana: {}, kanaBest: 0, extra: {}, undo: null };
 
 const addDay = (a: DayLog, b: DayLog, sign = 1): DayLog => ({ n: a.n + sign * b.n, r: a.r + sign * b.r, ok: a.ok + sign * b.ok, ms: a.ms + sign * b.ms });
 
@@ -59,6 +66,8 @@ export function migrateV1(old: Record<string, unknown>) {
     starred: rekey(old.starred),
     log,
     kana: (old.kana as S["kana"]) ?? {},
+    kanaBest: (old.kanaBest as number) ?? 0,
+    extra: (old.extra as S["extra"]) ?? {},
     settings: { ...defaults, ...(old.settings as Partial<Settings>) },
   };
 }
@@ -111,20 +120,28 @@ export const useStore = create<S>()(
         const [a, b] = get().kana[k] ?? [0, 0];
         set({ kana: { ...get().kana, [k]: ok ? [a + 1, b] : [a, b + 1] } });
       },
+      setKanaBest: (n) => n > get().kanaBest && set({ kanaBest: n }),
+      addExtra: (deck, n) => {
+        const k = `${dayKey()}:${deck}`;
+        set({ extra: { ...get().extra, [k]: (get().extra[k] ?? 0) + n } });
+      },
       setSettings: (p) => set({ settings: { ...get().settings, ...p } }),
       importData: (json) => {
         const d = JSON.parse(json);
         if (!d || typeof d !== "object" || typeof d.cards !== "object") throw new Error("文件格式不正确");
         const m = migrateV1(d) as unknown as S;
-        set({ cards: m.cards, known: m.known, starred: m.starred, log: m.log, kana: m.kana, settings: m.settings, undo: null });
+        set({ cards: m.cards, known: m.known, starred: m.starred, log: m.log, kana: m.kana, kanaBest: m.kanaBest, extra: m.extra, settings: m.settings, undo: null });
       },
       reset: () => set({ ...empty, settings: { ...defaults, deck: get().settings.deck } }),
     }),
     {
       name: "kotonoha-v2",
-      version: 2,
-      partialize: ({ cards, known, starred, log, kana, settings }) => ({ cards, known, starred, log, kana, settings }),
-      migrate: (persisted, version) => (version < 2 ? migrateV1(persisted as Record<string, unknown>) : persisted) as S,
+      version: 3,
+      partialize: ({ cards, known, starred, log, kana, kanaBest, extra, settings }) => ({ cards, known, starred, log, kana, kanaBest, extra, settings }),
+      migrate: (persisted, version) => {
+        const p = (version < 2 ? migrateV1(persisted as Record<string, unknown>) : persisted) as S;
+        return { ...p, settings: { ...defaults, ...p.settings }, kanaBest: p.kanaBest ?? 0, extra: p.extra ?? {} } as S;
+      },
     },
   ),
 );

@@ -2,10 +2,41 @@
 //  - English (toefl, cet6): KyleBing/english-vocabulary (BSD-3-Clause)
 //  - Japanese (n1..n5): jamsinclair/open-anki-jlpt-decks (MIT)
 //  - Curated v1 entries (Chinese meanings, mnemonics, examples) from data/legacy/curated.json go first.
-// Entry format: [word, meaning, phrases?, reading?, extra?] where extra = [example, exampleZh, hook, parts]
+// Entry format: [word, meaning, phrases, reading, extra|0, alt, forms?]  (forms: ECDICT exchange, EN only)
+//   EN: reading = US IPA, alt = UK IPA.  JA: reading = kana, alt = Hepburn romaji.
+//   extra = [example, exampleZh, hook, parts]
+// Hepburn romaji; long vowels kept as written (おう -> ou), ー handled by wanakana.
+export const romaji = (kana) => toRomaji(kana, { upcaseKatakana: false });
 // Usage: node scripts/build-words.mjs [cacheDir]
 import { readFile, writeFile, mkdir } from "node:fs/promises";
 import { existsSync } from "node:fs";
+import { toRomaji } from "wanakana";
+
+// ---- IPA sources ----
+// UK-style: ECDICT phonetic field (MIT, skywind3000/ECDICT). US: CMUdict (BSD-2) converted from ARPAbet.
+import { arpaToIpa } from "./ipa.mjs";
+let US = null, UK = null;
+async function loadIpa() {
+  if (US) return;
+  US = new Map(); UK = new Map();
+  const cmu = await get("https://raw.githubusercontent.com/cmusphinx/cmudict/master/cmudict.dict", "cmudict.dict");
+  for (const line of cmu.split("\n")) {
+    const m = line.match(/^([a-z'.-]+)\s+(.+?)(\s+#.*)?$/);
+    if (m && !US.has(m[1])) US.set(m[1], arpaToIpa(m[2]));
+  }
+  const ec = parseCsv(await get("https://raw.githubusercontent.com/skywind3000/ECDICT/master/ecdict.csv", "ecdict.csv"));
+  FORMS = new Map();
+  for (const row of ec) {
+    const w = (row[0] || "").toLowerCase();
+    if (!w || UK.has(w)) continue;
+    const ph = (row[1] || "").trim();
+    if (ph) UK.set(w, ph.replace(/'/g, "ˈ").replace(/,/g, "ˌ").replace(/:/g, "ː").replace(/[\u04d9\u0259]/g, "ə").replace(/g/g, "ɡ"));
+    const ex = (row[10] || "").split("/").filter((x) => /^[pdi3srt]:/.test(x)).join("/");
+    if (ex) FORMS.set(w, ex);
+  }
+}
+let FORMS = null;
+const ipaOf = (w) => { const k = w.toLowerCase(); return [US.get(k) ?? "", UK.get(k) ?? ""]; };
 
 const cache = process.argv[2];
 const KB = "https://raw.githubusercontent.com/KyleBing/english-vocabulary/master/json/";
@@ -42,13 +73,15 @@ function curatedEntries(deck) {
   return (curated[deck] ?? []).map((d) => {
     const isJa = deck.startsWith("n");
     const extra = [d.example, d.exampleZh, d.hook, d.parts.map((p) => `${p.t}=${p.g}`).join("|")];
-    return [d.word, `${d.pos} ${d.meaning}`, [], isJa ? `${d.reading}${d.roma ? ` · ${d.roma}` : ""}` : d.ipa ?? "", extra];
+    return [d.word, `${d.pos} ${d.meaning}`, [], isJa ? d.reading : d.ipa ?? "", extra];
   });
 }
 
 await mkdir("public/words", { recursive: true });
 const counts = {};
 
+await loadIpa();
+const cover = {};
 for (const [deck, file] of Object.entries(EN)) {
   const raw = JSON.parse(await get(KB + encodeURIComponent(file), file));
   // English: keep source order (ids stay stable across versions); enrich curated words in place, append the rest.
@@ -63,10 +96,15 @@ for (const [deck, file] of Object.entries(EN)) {
     seen.add(w.toLowerCase());
     const phrases = (item.phrases || []).filter((p) => p.phrase && p.translation).slice(0, 3).map((p) => [p.phrase.trim(), p.translation.trim()]);
     const c = cur.get(w.toLowerCase());
-    if (c) { out.push([w, meaning, phrases, c[3], c[4]]); cur.delete(w.toLowerCase()); }
-    else out.push(phrases.length ? [w, meaning, phrases] : [w, meaning]);
+    const [us, uk] = ipaOf(w);
+    const fallback = c?.[3]?.replace(/^\/|\/$/g, "") ?? "";
+    const e = [w, meaning, phrases, us || fallback, c ? c[4] : 0, uk || (us ? "" : fallback)];
+    if (FORMS.get(w.toLowerCase())) e.push(FORMS.get(w.toLowerCase()));
+    out.push(e);
+    if (c) cur.delete(w.toLowerCase());
   }
-  out.push(...cur.values());
+  for (const c of cur.values()) { const [us, uk] = ipaOf(c[0]); out.push([c[0], c[1], c[2], us || c[3].replace(/^\/|\/$/g, ""), c[4], uk]); }
+  cover[deck] = { us: out.filter((e) => e[3]).length, uk: out.filter((e) => e[5]).length, any: out.filter((e) => e[3] || e[5]).length, total: out.length };
   await writeFile(`public/words/${deck}.json`, JSON.stringify(out));
   counts[deck] = out.length;
 }
@@ -80,10 +118,13 @@ for (const n of [1, 2, 3, 4, 5]) {
     const w = (expr || "").trim();
     if (!w || !meaning || seen.has(w)) continue;
     seen.add(w);
-    out.push([w, meaning.trim(), [], reading && reading !== w ? reading.trim() : ""]);
+    out.push([w, meaning.trim(), [], reading && reading !== w ? reading.trim() : "", 0]);
   }
+  for (const e of out) e[5] = romaji(e[3] || e[0]);
   await writeFile(`public/words/${deck}.json`, JSON.stringify(out));
   counts[deck] = out.length;
 }
+console.log("IPA coverage", cover);
+await writeFile("data/ipa-coverage.json", JSON.stringify(cover, null, 2) + "\n");
 await writeFile("src/data/counts.json", JSON.stringify(counts, null, 2) + "\n");
 console.log(counts);
