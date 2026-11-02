@@ -1,118 +1,137 @@
 @import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
 
-@theme {
-  --color-bg: #101214;
-  --color-surface: #181b1f;
-  --color-elevated: #22262c;
-  --color-fg: #f3f1ec;
-  --color-muted: #a39e94;
-  --color-subtle: #746f68;
-  --color-border: #2c3136;
-  --color-border-strong: #3d444b;
-  --color-accent: #d5d8dc;
-  --color-accent-fg: #141618;
-  --color-again: #d0a39c;
-  --color-keep: #a8b5ad;
-  --font-display: "Newsreader", "Iowan Old Style", "Palatino Linotype", palatino, serif;
-  --font-sans: "Outfit", "Noto Sans JP", "Hiragino Sans", "PingFang SC", system-ui, sans-serif;
-  --font-jp: "Noto Serif JP", "Newsreader", "Songti SC", serif;
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 20px;
-  --radius-xl: 24px;
-  --radius-2xl: 32px;
+/* 言叶 · 和紙と墨 — identity derived from v1.0.0 (ink diamond mark, Newsreader + Mincho, ink palette) */
+@font-face {
+  font-family: "Kotonoha Mincho";
+  src: url("./assets/fonts/mincho-400.woff2") format("woff2");
+  font-weight: 400 900;
+  font-display: swap;
 }
 
+@theme {
+  --color-bg: var(--k-bg);
+  --color-surface: var(--k-surface);
+  --color-elevated: var(--k-elevated);
+  --color-fg: var(--k-fg);
+  --color-muted: var(--k-muted);
+  --color-subtle: var(--k-subtle);
+  --color-border: var(--k-border);
+  --color-ink: var(--k-ink);
+  --color-ink-fg: var(--k-ink-fg);
+  --color-accent: var(--k-accent);
+  --color-accent-soft: var(--k-accent-soft);
+  --color-again: var(--k-again);
+  --color-hard: var(--k-hard);
+  --color-keep: var(--k-keep);
+  --font-display: "Newsreader", "Iowan Old Style", "Palatino Linotype", Palatino, "Kotonoha Mincho", serif;
+  --font-sans: "Outfit", "PingFang SC", "Hiragino Sans GB", "Noto Sans CJK SC", "Microsoft YaHei", system-ui, sans-serif;
+  --font-jp: "Kotonoha Mincho", "Hiragino Mincho ProN", "Yu Mincho", "Noto Serif CJK JP", "Source Han Serif JP", "Songti SC", serif;
+  --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+:root {
+  /* 和紙 (paper) */
+  --k-bg: #f2ede3;
+  --k-surface: #fbf8f2;
+  --k-elevated: #e9e2d4;
+  --k-fg: #1d1a16;
+  --k-muted: #685f53;
+  --k-subtle: #9a9083;
+  --k-border: #dcd2c1;
+  --k-ink: #1d1a16;
+  --k-ink-fg: #f6f2ea;
+  --k-again: #b0473a;
+  --k-hard: #a87a2a;
+  --k-keep: #4c7a63;
+  --k-grain: 0.07;
+  color-scheme: light;
+}
+.dark {
+  /* 墨 (ink) — the v1.0.0 palette */
+  --k-bg: #101214;
+  --k-surface: #181b1f;
+  --k-elevated: #22262c;
+  --k-fg: #f3f1ec;
+  --k-muted: #a39e94;
+  --k-subtle: #746f68;
+  --k-border: #2c3136;
+  --k-ink: #e9e5dc;
+  --k-ink-fg: #141618;
+  --k-again: #d0a39c;
+  --k-hard: #d6bb86;
+  --k-keep: #a8c0b2;
+  --k-grain: 0.05;
+  color-scheme: dark;
+}
+/* 季節の色 — accent follows the season */
+[data-season="spring"] { --k-accent: #bf5f75; --k-accent-soft: #f1dbe0; }
+[data-season="summer"] { --k-accent: #2f7a68; --k-accent-soft: #d6ebe4; }
+[data-season="autumn"] { --k-accent: #b2502f; --k-accent-soft: #f3ddd3; }
+[data-season="winter"] { --k-accent: #35598f; --k-accent-soft: #dbe3f0; }
+.dark[data-season="spring"] { --k-accent: #e6a4b4; --k-accent-soft: #3a262c; }
+.dark[data-season="summer"] { --k-accent: #8fcab6; --k-accent-soft: #1d302b; }
+.dark[data-season="autumn"] { --k-accent: #e59a7d; --k-accent-soft: #3a2620; }
+.dark[data-season="winter"] { --k-accent: #9db5de; --k-accent-soft: #212b3b; }
+
 @layer base {
-  button:not(:disabled),
-  [role="button"]:not(:disabled) {
-    cursor: pointer;
-  }
-
-  html {
-    background: var(--color-bg);
-    color: var(--color-fg);
-  }
-
+  html { background: var(--k-bg); color: var(--k-fg); -webkit-tap-highlight-color: transparent; }
   body {
     margin: 0;
     min-height: 100dvh;
     overflow-x: hidden;
-    background: var(--color-bg);
-    color: var(--color-fg);
     font-family: var(--font-sans);
-    font-size: 16px;
-    line-height: 1.5;
+    line-height: 1.55;
     text-rendering: optimizeLegibility;
-    -webkit-tap-highlight-color: transparent;
+    -webkit-font-smoothing: antialiased;
+    overscroll-behavior-y: none;
   }
-
-  ::selection {
-    background: var(--color-accent);
-    color: var(--color-accent-fg);
+  /* washi grain: tiny fixed noise layer, composited once (no repaint on scroll) */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    opacity: var(--k-grain);
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.35 0 0 0 0 0.3 0 0 0 0 0.22 0 0 0 1.4 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+    transform: translateZ(0);
   }
-
-  :focus-visible {
-    outline: 2px solid var(--color-accent);
-    outline-offset: 2px;
-  }
+  #root { position: relative; z-index: 1; }
+  button:not(:disabled), [role="button"] { cursor: pointer; }
+  ::selection { background: var(--k-accent); color: #fff; }
+  :focus-visible { outline: 2px solid var(--k-accent); outline-offset: 2px; border-radius: 6px; }
 }
 
-.press {
-  transition: transform 150ms cubic-bezier(0.22, 1, 0.36, 1);
-}
+@utility card { @apply rounded-[20px] border border-border bg-surface; }
+@utility press { transition: transform 160ms var(--ease-out-soft), background-color 160ms, color 160ms, border-color 160ms; &:active { transform: scale(0.97); } }
+@utility btn { @apply press inline-flex min-h-12 items-center justify-center gap-2 rounded-[14px] px-4 font-medium whitespace-nowrap select-none disabled:opacity-40; }
+@utility btn-ink { @apply btn bg-ink text-ink-fg; }
+@utility btn-line { @apply btn border border-border bg-surface text-fg; }
+@utility eyebrow { @apply text-[11px] tracking-[0.3em] text-subtle; }
+.font-jp { font-synthesis: none; }
+@utility font-word { font-family: var(--font-display); font-feature-settings: "kern", "liga"; }
 
-.press:active {
-  transform: scale(0.98);
+.hanko {
+  /* small vermilion seal used for streaks/milestones */
+  display: inline-grid;
+  place-items: center;
+  border: 1.5px solid var(--k-accent);
+  color: var(--k-accent);
+  border-radius: 6px;
+  font-family: var(--font-jp);
+  transform: rotate(-4deg);
 }
-
-.rise {
-  animation: rise 250ms cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-
-.sheet {
-  animation: sheet-in 400ms cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-
-@keyframes rise {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
-
-@keyframes sheet-in {
-  from {
-    opacity: 0;
-    transform: translateY(12px);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
-
-.tabbar {
-  padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
-}
-
-.app-pad {
-  padding-bottom: calc(5.5rem + env(safe-area-inset-bottom));
-}
+.tabbar { padding-bottom: max(0.4rem, env(safe-area-inset-bottom)); }
+.safe-top { padding-top: max(1rem, env(safe-area-inset-top)); }
+.scroll-x { scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+.scroll-x::-webkit-scrollbar { display: none; }
+.cv-auto { content-visibility: auto; contain-intrinsic-size: 0 56px; }
 
 @media (prefers-reduced-motion: reduce) {
-  .press,
-  .rise,
-  .sheet {
-    animation: none;
-    transition: none;
-  }
-
-  .press:active {
-    transform: none;
-  }
+  *, *::before, *::after { animation-duration: 1ms !important; transition-duration: 1ms !important; }
 }
+@keyframes rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+@keyframes stamp { 0% { opacity: 0; transform: scale(1.8) rotate(-12deg); } 60% { opacity: 1; transform: scale(.92) rotate(-4deg); } 100% { transform: scale(1) rotate(-4deg); } }
+@keyframes draw { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+@keyframes grow { from { transform: scaleY(0); } to { transform: scaleY(1); } }

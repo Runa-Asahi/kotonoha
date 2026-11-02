@@ -1,0 +1,10 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><title>言叶</title>
+<script>
+  // GitHub Pages fallback: turn /kotonoha/words/12 into /kotonoha/#/words/12
+  (function () {
+    var l = window.location, seg = l.pathname.split("/").filter(Boolean);
+    var base = l.hostname.endsWith("github.io") && seg.length ? "/" + seg.shift() + "/" : "/";
+    l.replace(base + "#/" + seg.join("/") + l.search);
+  })();
+</script></head><body>正在跳转…<a href="./">返回首页</a></body></html>

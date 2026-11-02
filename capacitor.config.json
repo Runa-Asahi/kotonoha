@@ -1,0 +1,6 @@
+{
+  "appId": "app.kotonoha",
+  "appName": "言叶",
+  "webDir": "dist",
+  "android": { "backgroundColor": "#f8fafc" }
+}
